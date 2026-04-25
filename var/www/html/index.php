@@ -15,23 +15,30 @@ $status_message = "";
 
 // HANDLE FORM SUBMISSION
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $date = $_POST['workout_date'];
-    $exercise = $_POST['exercise_name'];
-    $weight = $_POST['weight'];
-    $sets = $_POST['sets'];
-    $reps = $_POST['reps'];
-    $failure = isset($_POST['failure']) ? 1 : 0;
+    // 1. Sanitize and Validate Inputs
+    $date = trim($_POST['workout_date']);
+    $exercise = trim(htmlspecialchars($_POST['exercise_name'])); // Prevents XSS scripts
+    $weight = filter_var($_POST['weight'], FILTER_VALIDATE_FLOAT);
+    $sets = filter_var($_POST['sets'], FILTER_VALIDATE_INT);
+    $reps = filter_var($_POST['reps'], FILTER_VALIDATE_INT);
 
-    // Prepared statement to prevent SQL Injection (A+ Security Practice!)
-    $stmt = $conn->prepare("INSERT INTO logs (workout_date, exercise_name, weight, sets, reps, muscle_failure_achieved) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("ssdiii", $date, $exercise, $weight, $sets, $reps, $failure);
-
-    if ($stmt->execute()) {
-        $status_message = "<div class='alert success'>Workout logged successfully to the database!</div>";
+    // 2. Server-side validation check
+    if (empty($date) || empty($exercise) || $weight === false || $sets === false || $reps === false) {
+        $status_message = "<div class='alert error'>Error: Please fill out all fields with valid data.</div>";
+    } elseif ($weight < 0 || $sets < 1 || $reps < 0) {
+        $status_message = "<div class='alert error'>Error: Numbers cannot be negative.</div>";
     } else {
-        $status_message = "<div class='alert error'>Error: " . $stmt->error . "</div>";
+        // 3. Prepared statement to prevent SQL Injection
+        $stmt = $conn->prepare("INSERT INTO logs (workout_date, exercise_name, weight, sets, reps) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssdii", $date, $exercise, $weight, $sets, $reps);
+
+        if ($stmt->execute()) {
+            $status_message = "<div class='alert success'>Workout logged successfully to the database!</div>";
+        } else {
+            $status_message = "<div class='alert error'>Error: " . $stmt->error . "</div>";
+        }
+        $stmt->close();
     }
-    $stmt->close();
 }
 ?>
 
@@ -90,23 +97,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             border-radius: 6px;
             box-sizing: border-box;
         }
-        .checkbox-container {
-            display: flex;
-            align-items: center;
-            margin-top: 20px;
-            background-color: #2c2c2c;
-            padding: 12px;
-            border-radius: 6px;
-        }
-        .checkbox-container input {
-            margin-right: 10px;
-            transform: scale(1.3);
-        }
-        .checkbox-container label {
-            margin: 0;
-            color: #ff5252;
-            font-weight: bold;
-        }
         button {
             width: 100%;
             padding: 14px;
@@ -138,29 +128,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <div class="container">
         <h1>WorkoutTracker</h1>
-        <div class="node-badge">Serving from: VM1</div>
+        <div class="node-badge">Serving from: VM here</div>
 
         <?= $status_message ?>
 
         <form method="POST" action="">
             <label for="workout_date">Date</label>
-            <input type="date" id="workout_date" name="workout_date" required>
+            <input type="date" id="workout_date" name="workout_date" max="<?= date('Y-m-d') ?>" required>
 
             <label for="exercise_name">Exercise Name</label>
-            <input type="text" id="exercise_name" name="exercise_name" placeholder="e.g., Incline Dumbbell Press" required>
+            <input type="text" id="exercise_name" name="exercise_name" placeholder="e.g., Incline Dumbbell Press" maxlength="255" required>
 
             <div style="display: flex; gap: 15px;">
                 <div style="flex: 1;">
                     <label for="weight">Weight (lbs)</label>
-                    <input type="number" id="weight" name="weight" step="0.5" placeholder="90" required>
+                    <input type="number" id="weight" name="weight" step="0.5" min="0" placeholder="90" required>
                 </div>
                 <div style="flex: 1;">
                     <label for="sets">Total Sets</label>
-                    <input type="number" id="sets" name="sets" placeholder="3" required>
+                    <input type="number" id="sets" name="sets" placeholder="3" min="1" required>
                 </div>
                 <div style="flex: 1;">
                     <label for="reps">Reps (Last Set)</label>
-                    <input type="number" id="reps" name="reps" placeholder="6" required>
+                    <input type="number" id="reps" name="reps" placeholder="6" min="0" required>
                 </div>
             </div>
 
