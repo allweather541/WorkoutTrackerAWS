@@ -29,7 +29,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['log_workout'])) {
     } else {
         $stmt = $conn->prepare("INSERT INTO logs (workout_date, exercise_name, weight, sets, reps) VALUES (?, ?, ?, ?, ?)");
         $stmt->bind_param("ssdii", $date, $exercise, $weight, $sets, $reps);
-
+        
         if ($stmt->execute()) {
             $status_message = "<div class='alert success'>Workout logged successfully to the database!</div>";
         } else {
@@ -42,15 +42,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['log_workout'])) {
 // 2. HANDLE SEARCH REQUEST
 if ($_SERVER["REQUEST_METHOD"] == "GET" && !empty($_GET['search'])) {
     $search_query = trim(htmlspecialchars($_GET['search']));
-    // The % symbols act as wildcards, so it finds the word anywhere in the string
-    $like_query = "%" . $search_query . "%";
-
-    // Select results, ordered by the most recent date first
+    $like_query = "%" . $search_query . "%"; 
+    
     $stmt = $conn->prepare("SELECT workout_date, exercise_name, weight, sets, reps FROM logs WHERE exercise_name LIKE ? ORDER BY workout_date DESC LIMIT 10");
     $stmt->bind_param("s", $like_query);
     $stmt->execute();
     $result = $stmt->get_result();
-
+    
     while ($row = $result->fetch_assoc()) {
         $search_results[] = $row;
     }
@@ -63,7 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && !empty($_GET['search'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WorkoutTracker</title>
+    <title>Tractus - WorkoutTracker</title>
     <style>
         body {
             background-color: #121212;
@@ -81,16 +79,25 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && !empty($_GET['search'])) {
             border-radius: 12px;
             box-shadow: 0 8px 16px rgba(0,0,0,0.5);
             width: 100%;
-            max-width: 600px; /* Slightly wider to fit the table nicely */
+            max-width: 600px;
             border-top: 4px solid #bb86fc;
             margin-bottom: 20px;
+            text-align: center; /* Centers the logo and headers */
         }
-        h1 { text-align: center; color: #bb86fc; margin-top: 0; }
-        h2 { border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 30px; font-size: 1.2em;}
+        .logo {
+            width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+            border-radius: 50%; /* Perfect for the circular badge */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.6);
+        }
+        h1 { color: #bb86fc; margin-top: 0; margin-bottom: 5px; }
+        h2 { border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 30px; font-size: 1.2em; text-align: left; }
         .node-badge {
             background-color: #333; color: #aaa; text-align: center;
             padding: 5px; border-radius: 6px; font-size: 0.85em; margin-bottom: 20px;
         }
+        form { text-align: left; } /* Keeps form fields aligned left */
         label { display: block; margin: 15px 0 5px; font-weight: 600; color: #e0e0e0; }
         input[type="text"], input[type="number"], input[type="date"] {
             width: 100%; padding: 12px; border: 1px solid #333;
@@ -107,8 +114,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && !empty($_GET['search'])) {
         .alert { padding: 15px; margin-bottom: 20px; border-radius: 6px; text-align: center; font-weight: bold; }
         .success { background-color: rgba(76, 175, 80, 0.2); color: #4caf50; border: 1px solid #4caf50; }
         .error { background-color: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid #f44336; }
-
-        /* Table Styles */
+        
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
         th { background-color: #2c2c2c; color: #bb86fc; }
@@ -119,14 +125,16 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && !empty($_GET['search'])) {
 <body>
 
     <div class="container">
+        <img src="https://workouttracker-bucket-umlsp2026.s3.us-east-2.amazonaws.com/WTlogo.png" alt="Tractus Logo" class="logo">
+        
         <h1>WorkoutTracker</h1>
-        <div class="node-badge">Serving from: VMplaceholder</div>
-
+        <div class="node-badge">Serving from: VM1</div>
+        
         <?= $status_message ?>
 
         <form method="POST" action="">
             <input type="hidden" name="log_workout" value="1">
-
+            
             <label for="workout_date">Date</label>
             <input type="date" id="workout_date" name="workout_date" max="<?= date('Y-m-d') ?>" required>
 
